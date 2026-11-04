@@ -1,0 +1,22 @@
+name: MyBanksFlow
+version: "1.0.0"
+slug: mybanksflow
+description: Lokale financiën, budgetten en contracten
+arch:
+  - amd64
+startup: application
+boot: auto
+init: false
+ingress: true
+ingress_port: 8099
+ingress_stream: true
+panel_icon: mdi:bank
+panel_title: MyBanksFlow
+panel_admin: true
+backup: cold
+options:
+  admin_email: ""
+  admin_password: ""
+schema:
+  admin_email: email
+  admin_password: password
