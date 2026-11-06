@@ -1,3 +1,9 @@
+# 1.0.1
+
+- Herstelt de installatiefout bij verouderde npm-pakketgegevens.
+- Stemt de pakketvergrendeling in de lokale installatie af vóór de schone installatie.
+- Bestaande gegevens, sleutels en Cloud-/VPS-installaties blijven ongewijzigd.
+
 # 1.0.0
 
 - Eerste zelfstandige Home Assistant-uitgave.

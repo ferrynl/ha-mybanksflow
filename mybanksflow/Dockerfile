@@ -12,7 +12,10 @@ RUN curl -fsSL https://github.com/supabase/storage/archive/refs/tags/v1.14.6.tar
 FROM node:20-alpine3.20 AS frontend
 WORKDIR /web
 COPY web/ ./
-RUN npm ci && npm run build -- --base=./
+# The app manifest can change independently of the exported npm lockfile.
+# Reconcile only this isolated build context before the clean installation.
+RUN npm install --package-lock-only --ignore-scripts --no-audit --no-fund \
+    && npm ci --no-audit --no-fund && npm run build -- --base=./
 
 FROM alpine:3.20
 RUN apk add --no-cache postgresql15 postgresql15-contrib nginx python3 py3-psycopg2 libstdc++ libgcc ca-certificates \
@@ -24,7 +27,7 @@ COPY --from=storage /usr/local/bin/node /usr/local/bin/node
 COPY --from=storage /opt/storage /opt/storage
 COPY --from=frontend /web/dist /web
 COPY rootfs/ /
-ARG BUILD_VERSION=1.0.0
+ARG BUILD_VERSION=1.0.1
 ARG BUILD_ARCH=amd64
 RUN printf '%s' "$BUILD_VERSION" > /opt/mybanksflow/version
 LABEL io.hass.type="addon" io.hass.version="${BUILD_VERSION}" io.hass.arch="${BUILD_ARCH}"
