@@ -11,7 +11,7 @@ Deze extra uitgave draait volledig lokaal: financiën, login en contractbestande
 
 ## Eenmalig: installatierepository klaarzetten
 
-De installatierepository voor deze uitgave is **https://github.com/ferrynl/ha-mybanksflow**. Gebruik deze URL in Home Assistant zodra de installatiebestanden daar zijn geplaatst. Voor volgende uitgaven maak je vanuit de broncode de zelfstandige repository:
+Gebruik de [centrale apprepository](https://github.com/ferrynl/ha-apps) in Home Assistant. Vanuit de broncode kun je de installatiemap voor een nieuwe uitgave genereren:
 
 ```bash
 python3 homeassistant/package.py /tmp/mybanksflow-ha
@@ -24,7 +24,7 @@ Een alternatief is de gegenereerde map `mybanksflow` te kopiëren naar `/addons/
 ## Installatie in Home Assistant
 
 1. Open **Instellingen → Apps** (in oudere versies **Add-ons**) → winkel → menu → **Repositories**.
-2. Voeg **https://github.com/ferrynl/ha-mybanksflow** toe en vernieuw de winkel.
+2. Voeg **https://github.com/ferrynl/ha-apps** toe en vernieuw de winkel.
 3. Open **MyBanksFlow** en kies **Installeren**. De eerste installatie bouwt de app op de machine; dit kan enkele minuten duren.
 4. Vul onder **Configuratie** `admin_email` en `admin_password` in. Gebruik een uniek wachtwoord van **minimaal 12 tekens**.
 5. Sla op, zet **Starten bij opstarten** en **Weergeven in zijbalk** aan en kies **Starten**.
@@ -47,7 +47,7 @@ Voor de beheerder van de installatierepository:
 1. Werk de broncode bij en voeg nieuwe lokale schemawijzigingen toe als een **nieuw** genummerd bestand in `rootfs/opt/mybanksflow/migrations/`.
 2. Verander nooit een reeds gebruikte migratie. De app controleert de inhoud en weigert op te starten als die achteraf gewijzigd is. De eerste `001_initial.sql` is vastgezet en wordt bij vervolguitgaven niet opnieuw gegenereerd uit de VPS-schema-bron.
 3. Verhoog het versienummer in `mybanksflow/config.yaml`, de standaard `BUILD_VERSION` in de Dockerfile en de changelog.
-4. Maak met `package.py` een nieuwe installatiemap en plaats deze in dezelfde GitHub-repository.
+4. Genereer met `package.py` een nieuwe installatiemap en werk `mybanksflow/` bij in de bronrepository. De centrale apprepository neemt die map over via GitHub Actions.
 5. Test de nieuwe uitgave eerst op een testinstallatie en test een volledige back-up/restore.
 
 Voor de gebruiker:
