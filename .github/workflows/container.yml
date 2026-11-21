@@ -1,0 +1,45 @@
+name: MyBanksFlow container
+on:
+  pull_request:
+    paths: ['mybanksflow/**', '.github/workflows/container.yml']
+permissions:
+  contents: read
+jobs:
+  startup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - run: docker build --pull -t mybanksflow-test mybanksflow
+      - name: Check fresh startup and restart with existing data
+        shell: bash
+        run: |
+          set -euo pipefail
+          cleanup() {
+            docker logs mybanksflow-test 2>/dev/null || true
+            docker rm -f mybanksflow-test >/dev/null 2>&1 || true
+            docker volume rm mybanksflow-test-data >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker volume create mybanksflow-test-data
+          docker run --rm -v mybanksflow-test-data:/data --entrypoint python3 mybanksflow-test \
+            -c 'import json, secrets; from pathlib import Path; Path("/data/options.json").write_text(json.dumps({"admin_email":"smoke@example.test","admin_password":secrets.token_urlsafe(24)}))'
+          start_and_check() {
+            docker run -d --name mybanksflow-test -v mybanksflow-test-data:/data mybanksflow-test
+            for attempt in $(seq 1 90); do
+              if docker logs mybanksflow-test 2>&1 | grep -Fq 'MyBanksFlow gestart' &&
+                 docker exec mybanksflow-test wget -q -O /dev/null http://127.0.0.1:3000/; then
+                return 0
+              fi
+              test "$(docker inspect --format '{{.State.Running}}' mybanksflow-test)" = true
+              sleep 2
+            done
+            return 1
+          }
+          start_and_check
+          test "$(docker exec mybanksflow-test node --version)" = v22.23.5
+          docker stop --timeout 45 mybanksflow-test
+          docker rm mybanksflow-test
+          start_and_check
