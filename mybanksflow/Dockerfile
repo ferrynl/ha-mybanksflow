@@ -36,7 +36,7 @@ COPY --from=rest /bin/postgrest /usr/local/bin/postgrest
 COPY --from=storage /opt/storage /opt/storage
 COPY --from=frontend /web/dist /web
 COPY rootfs/ /
-ARG BUILD_VERSION=1.0.1
+ARG BUILD_VERSION=1.0.2
 ARG BUILD_ARCH=amd64
 RUN printf '%s' "$BUILD_VERSION" > /opt/mybanksflow/version
 LABEL io.hass.type="addon" io.hass.version="${BUILD_VERSION}" io.hass.arch="${BUILD_ARCH}"
