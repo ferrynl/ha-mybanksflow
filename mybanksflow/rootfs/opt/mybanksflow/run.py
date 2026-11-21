@@ -7,6 +7,7 @@ import signal
 import subprocess
 import threading
 import time
+import traceback
 import urllib.request
 import pwd
 from pathlib import Path
@@ -187,7 +188,10 @@ if __name__ == "__main__":
         main()
     except Exception as error:
         # Avoid dumping upstream responses/SQL containing credentials.
-        print("MyBanksFlow kon niet starten. Controleer instellingen of herstel de laatste volledige back-up.")
+        location = next(frame for frame in reversed(traceback.extract_tb(error.__traceback__))
+                        if frame.filename == __file__)
+        print(f"MyBanksFlow kon niet starten bij {location.name}:{location.lineno} "
+              f"({type(error).__name__}). Controleer instellingen of herstel de laatste volledige back-up.")
         stop()
         raise SystemExit(1) from None
     finally:
