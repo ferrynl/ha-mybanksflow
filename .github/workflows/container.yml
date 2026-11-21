@@ -18,7 +18,7 @@ jobs:
         run: |
           set -euo pipefail
           cleanup() {
-            docker logs mybanksflow-test 2>&1 | grep -Eo 'code[": ]+[A-Z_0-9]+|Error: Cannot find module [^ ]+|permission denied for [a-z_ ]{1,70}|Supabase Storage stopte tijdens het starten|MyBanksFlow kon niet starten bij [a-z_0-9:]+' || true
+            docker logs mybanksflow-test 2>/dev/null || true
             docker rm -f mybanksflow-test >/dev/null 2>&1 || true
             docker volume rm mybanksflow-test-data >/dev/null 2>&1 || true
           }
@@ -26,10 +26,8 @@ jobs:
           docker volume create mybanksflow-test-data
           docker run --rm -v mybanksflow-test-data:/data --entrypoint python3 mybanksflow-test \
             -c 'import json, secrets; from pathlib import Path; Path("/data/options.json").write_text(json.dumps({"admin_email":"smoke@example.test","admin_password":secrets.token_urlsafe(24)}))'
-          # This fixture uses only generated test data. Capture Storage diagnostics.
-          sed 's/cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL/cwd=cwd/' mybanksflow/rootfs/opt/mybanksflow/run.py > "$RUNNER_TEMP/mybanksflow-run.py"
           start_and_check() {
-            docker run -d --name mybanksflow-test -v mybanksflow-test-data:/data -v "$RUNNER_TEMP/mybanksflow-run.py:/opt/mybanksflow/run.py:ro" mybanksflow-test
+            docker run -d --name mybanksflow-test -v mybanksflow-test-data:/data mybanksflow-test
             for attempt in $(seq 1 90); do
               if docker logs mybanksflow-test 2>&1 | grep -Fq 'MyBanksFlow gestart' &&
                  docker exec mybanksflow-test wget -q -O /dev/null http://127.0.0.1:3000/; then

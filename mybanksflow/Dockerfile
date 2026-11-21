@@ -10,7 +10,11 @@ RUN apk add --no-cache nodejs
 FROM node_runtime AS storage
 RUN apk add --no-cache npm curl python3 make g++
 WORKDIR /opt/storage
+# pg returns SELECT EXISTS as a boolean. Keep Storage on its own schema
+# instead of granting database-wide CREATE for a redundant CREATE SCHEMA.
 RUN curl -fsSL https://github.com/supabase/storage/archive/refs/tags/v1.14.6.tar.gz | tar xz --strip-components=1 \
+    && grep -Fq "result.rows[0].exists === 'true'" src/internal/database/migrations/migrate.ts \
+    && sed -i "s/result\.rows\[0\]\.exists === 'true'/result.rows[0].exists === true/" src/internal/database/migrations/migrate.ts \
     && npm ci && npm run build && npm prune --omit=dev
 
 FROM node_runtime AS frontend
