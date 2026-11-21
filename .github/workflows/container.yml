@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - run: docker build --pull -t mybanksflow-test mybanksflow
@@ -39,6 +39,7 @@ jobs:
             return 1
           }
           start_and_check
+          test "$(docker exec mybanksflow-test node --version)" = v22.23.5
           docker stop --timeout 45 mybanksflow-test
           docker rm mybanksflow-test
           start_and_check

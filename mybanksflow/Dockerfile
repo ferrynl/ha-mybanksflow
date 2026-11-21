@@ -5,7 +5,8 @@ FROM postgrest/postgrest:v12.2.8 AS rest
 
 # Use the same Node.js and musl packages for building and running Storage.
 FROM alpine:3.22 AS node_runtime
-RUN apk add --no-cache nodejs
+RUN apk add --no-cache nodejs=22.23.5-r0 \
+    && test "$(node --version)" = v22.23.5
 
 FROM node_runtime AS storage
 RUN apk add --no-cache npm curl python3 make g++
