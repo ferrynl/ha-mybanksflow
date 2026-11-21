@@ -3,13 +3,18 @@
 FROM supabase/gotrue:v2.172.1 AS auth
 FROM postgrest/postgrest:v12.2.8 AS rest
 
-FROM node:20-alpine3.20 AS storage
-RUN apk add --no-cache curl python3 make g++
+# Use the same Node.js and musl packages for building and running Storage.
+FROM alpine:3.22 AS node_runtime
+RUN apk add --no-cache nodejs
+
+FROM node_runtime AS storage
+RUN apk add --no-cache npm curl python3 make g++
 WORKDIR /opt/storage
 RUN curl -fsSL https://github.com/supabase/storage/archive/refs/tags/v1.14.6.tar.gz | tar xz --strip-components=1 \
     && npm ci && npm run build && npm prune --omit=dev
 
-FROM node:20-alpine3.20 AS frontend
+FROM node_runtime AS frontend
+RUN apk add --no-cache npm
 WORKDIR /web
 COPY web/ ./
 # The app manifest can change independently of the exported npm lockfile.
@@ -17,13 +22,12 @@ COPY web/ ./
 RUN npm install --package-lock-only --ignore-scripts --no-audit --no-fund \
     && npm ci --no-audit --no-fund && npm run build -- --base=./
 
-FROM alpine:3.20
+FROM node_runtime
 RUN apk add --no-cache postgresql15 postgresql15-contrib nginx python3 py3-psycopg2 libstdc++ libgcc ca-certificates \
     && mkdir -p /run/postgresql /opt/mybanksflow/migrations /web
 COPY --from=auth /usr/local/bin/auth /usr/local/bin/auth
 COPY --from=auth /usr/local/etc/auth/migrations /opt/auth/migrations
 COPY --from=rest /bin/postgrest /usr/local/bin/postgrest
-COPY --from=storage /usr/local/bin/node /usr/local/bin/node
 COPY --from=storage /opt/storage /opt/storage
 COPY --from=frontend /web/dist /web
 COPY rootfs/ /
