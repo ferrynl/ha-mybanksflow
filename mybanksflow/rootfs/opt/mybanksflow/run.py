@@ -46,10 +46,14 @@ def launch(command, extra=None, cwd=None):
     return process
 
 
-def wait_ready(url, process):
+class ServiceStartupError(RuntimeError):
+    pass
+
+
+def wait_ready(url, process, service):
     for _ in range(120):
         if stopping or process.poll() is not None:
-            raise RuntimeError("Een lokale dienst is gestopt tijdens het starten")
+            raise ServiceStartupError(f"{service} stopte tijdens het starten")
         try:
             with urllib.request.urlopen(url, timeout=2) as response:
                 if response.status == 200:
@@ -57,7 +61,7 @@ def wait_ready(url, process):
         except Exception:
             pass
         time.sleep(1)
-    raise RuntimeError("Een lokale dienst is niet op tijd gestart")
+    raise ServiceStartupError(f"{service} reageerde niet op tijd")
 
 
 def main():
@@ -111,7 +115,7 @@ def main():
         "GOTRUE_JWT_SECRET": secrets["jwt_secret"], "GOTRUE_JWT_AUD": "authenticated", "GOTRUE_JWT_ADMIN_ROLES": "service_role",
         "GOTRUE_DISABLE_SIGNUP": "true", "GOTRUE_EXTERNAL_EMAIL_ENABLED": "true", "GOTRUE_MAILER_AUTOCONFIRM": "false",
     })
-    wait_ready("http://127.0.0.1:9999/health", auth)
+    wait_ready("http://127.0.0.1:9999/health", auth, "Supabase Auth")
     with connect() as db, db.cursor() as cursor:
         cursor.execute("GRANT EXECUTE ON FUNCTION auth.uid(), auth.role(), auth.jwt() TO anon, authenticated, service_role, supabase_storage_admin")
     storage = launch(["node", "dist/start/server.js"], {
@@ -125,7 +129,7 @@ def main():
         "TENANT_ID": "mybanksflow", "REGION": "local", "GLOBAL_S3_BUCKET": "local", "IMAGE_TRANSFORMATION_ENABLED": "false",
         "POSTGREST_URL": "http://127.0.0.1:3000",
     }, cwd="/opt/storage")
-    wait_ready("http://127.0.0.1:5000/status", storage)
+    wait_ready("http://127.0.0.1:5000/status", storage, "Supabase Storage")
 
     # Ledger lives outside exposed public schemas; each migration is atomic.
     with connect() as db, db.cursor() as cursor:
@@ -169,7 +173,7 @@ def main():
         "PGRST_DB_URI": f"postgres://authenticator:{password}@127.0.0.1:5432/postgres", "PGRST_DB_SCHEMAS": "public",
         "PGRST_DB_ANON_ROLE": "anon", "PGRST_JWT_SECRET": secrets["jwt_secret"], "PGRST_SERVER_HOST": "127.0.0.1", "PGRST_SERVER_PORT": "3000",
     })
-    wait_ready("http://127.0.0.1:3000/", rest)
+    wait_ready("http://127.0.0.1:3000/", rest, "PostgREST")
     Path("/web/runtime-config.js").write_text("window.MYBANKSFLOW_LOCAL=" + json.dumps({"anonKey": secrets["anon_key"]}) + ";")
     os.chmod("/web/runtime-config.js", 0o644)
     threading.Thread(target=start_admin_api, args=(secrets["service_key"], secrets["anon_key"], connect), daemon=True).start()
@@ -187,6 +191,9 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as error:
+        # ServiceStartupError contains only a fixed service name and status.
+        if isinstance(error, ServiceStartupError):
+            print(error)
         # Avoid dumping upstream responses/SQL containing credentials.
         location = next(frame for frame in reversed(traceback.extract_tb(error.__traceback__))
                         if frame.filename == __file__)
